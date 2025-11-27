@@ -1,0 +1,558 @@
+<!-- Chosen Palette: Warm Eco-Tech (Stone/Sand background, Forest Green primary, Deep Slate text, Tech Blue accents) -->
+<!-- Application Structure Plan: 
+    1. Header & Context: Introduces the Eco-Wear Tech funding strategy based on the report.
+    2. Strategic Dashboard: Two interactive Chart.js visualizations (Funding Volume vs. Type Distribution) to give a high-level financial overview.
+    3. Interactive Funding Finder: The core interactive section. A card-based grid with dynamic filtering (Scope, Type) and search. Users can 'select' grants to estimate total potential funding.
+    4. Detail Expansion: Clicking cards opens a detailed view (without page reload) showing specific requirements and expenses.
+    5. Action Plan Timeline: A simple logical flow based on the maturity of the startup (Creation -> R&D -> Growth).
+    This structure was chosen to transform a static list into a decision-making tool for the entrepreneurs.
+-->
+<!-- Visualization & Content Choices: 
+    1. Bar Chart (Chart.js): Visualizes 'Maximum Amounts' to compare the scale of opportunity (e.g., Red.es vs Kit Digital). Goal: Compare.
+    2. Doughnut Chart (Chart.js): Visualizes the 'Type of Aid' (Grant vs Loan) distribution. Goal: Inform/Risk Assessment.
+    3. Interactive Cards (HTML/JS): Displays individual grant data. Interaction: Filter by scope/type, Select to calculate total. Goal: Organize & Explore.
+    4. Calculator (JS Logic): Sums up 'potential' max funding based on user selection. Goal: Engagement/Planning.
+    CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. FontAwesome used for icons.
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Wear Tech | Navegador de Financiación 2025</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome (for icons instead of SVG) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F0; /* Warm neutral stone */
+            color: #334155;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #E7E5E4; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4ade80; 
+            border-radius: 4px;
+        }
+
+        /* Chart Container Styling - MANDATORY */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Constraint */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Utility for hiding elements */
+        .hidden-content {
+            display: none;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-stone-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-leaf text-green-600 text-2xl mr-3"></i>
+                    <span class="font-bold text-xl tracking-tight text-stone-800">Eco-Wear Tech <span class="font-light text-stone-500">| Financiación</span></span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-sm text-stone-500 hidden md:block">
+                        <i class="fa-solid fa-calendar-check mr-1"></i> Vigencia 2025
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Introduction Section -->
+        <section class="mb-12 text-center max-w-4xl mx-auto">
+            <h1 class="text-4xl font-bold text-stone-800 mb-4">Mapa de Recursos Financieros</h1>
+            <p class="text-lg text-stone-600 leading-relaxed">
+                Bienvenido al panel interactivo de financiación estratégica para <strong>Eco-Wear Tech</strong>. 
+                Basado en el análisis de convocatorias vigentes para 2025, esta herramienta permite explorar las 8 vías principales 
+                para financiar la creación de una empresa tecnológica y sostenible. Utilice este cuadro de mando para comparar subvenciones a fondo perdido, préstamos blandos y bonificaciones, diseñando así su hoja de ruta económica.
+            </p>
+        </section>
+
+        <!-- Dashboard / Visualizations Section -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            
+            <!-- Chart 1: Scale of Funding -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <div class="mb-4 border-b border-stone-100 pb-2">
+                    <h2 class="text-xl font-bold text-stone-800 flex items-center">
+                        <i class="fa-solid fa-chart-bar text-blue-500 mr-2"></i> Potencial de Financiación Máxima
+                    </h2>
+                    <p class="text-sm text-stone-500 mt-1">Comparativa de importes máximos por programa (Escala Logarítmica).</p>
+                </div>
+                <!-- Chart Container -->
+                <div class="chart-container">
+                    <canvas id="fundingAmountChart"></canvas>
+                </div>
+                <div class="mt-4 text-xs text-stone-400 text-center italic">
+                    *Nota: Las ayudas I+D de Red.es representan un valor atípico alto (5M€) dirigido a proyectos de gran envergadura.
+                </div>
+            </div>
+
+            <!-- Chart 2: Type Distribution -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <div class="mb-4 border-b border-stone-100 pb-2">
+                    <h2 class="text-xl font-bold text-stone-800 flex items-center">
+                        <i class="fa-solid fa-chart-pie text-green-500 mr-2"></i> Mix de Instrumentos Financieros
+                    </h2>
+                    <p class="text-sm text-stone-500 mt-1">Distribución de las 8 ayudas según su naturaleza financiera.</p>
+                </div>
+                <!-- Chart Container -->
+                <div class="chart-container">
+                    <canvas id="fundingTypeChart"></canvas>
+                </div>
+                <div class="mt-4 text-xs text-stone-400 text-center italic">
+                    *Estrategia: Priorizar subvenciones a fondo perdido para I+D y Préstamos Participativos para circulante.
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Interactive Funding Finder -->
+        <section class="mb-16">
+            <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 border-b border-stone-300 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-stone-800">Explorador de Ayudas</h2>
+                    <p class="text-stone-600 text-sm mt-1">Filtre y seleccione las ayudas para calcular su viabilidad.</p>
+                </div>
+                
+                <!-- Calculator Display -->
+                <div class="mt-4 md:mt-0 bg-stone-800 text-white px-6 py-3 rounded-lg shadow-lg flex flex-col items-end">
+                    <span class="text-xs uppercase tracking-wider text-stone-400">Potencial Seleccionado</span>
+                    <span class="text-2xl font-bold font-mono text-green-400" id="totalCalculator">0 €</span>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap gap-2 mb-8" id="filterContainer">
+                <button onclick="filterGrants('all')" class="px-4 py-2 rounded-full text-sm font-semibold bg-stone-800 text-white hover:bg-stone-700 transition active-filter" id="btn-all">Todos</button>
+                <button onclick="filterGrants('Subvención')" class="px-4 py-2 rounded-full text-sm font-semibold bg-white text-stone-600 border border-stone-300 hover:bg-green-50 hover:text-green-700 transition" id="btn-Subvención">Subvenciones</button>
+                <button onclick="filterGrants('Préstamo')" class="px-4 py-2 rounded-full text-sm font-semibold bg-white text-stone-600 border border-stone-300 hover:bg-blue-50 hover:text-blue-700 transition" id="btn-Préstamo">Préstamos</button>
+                <button onclick="filterGrants('Bonificación')" class="px-4 py-2 rounded-full text-sm font-semibold bg-white text-stone-600 border border-stone-300 hover:bg-yellow-50 hover:text-yellow-700 transition" id="btn-Bonificación">Bonificaciones</button>
+            </div>
+
+            <!-- Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="cardsGrid">
+                <!-- Cards will be injected via JS -->
+            </div>
+        </section>
+
+        <!-- Detailed View Modal (Conceptually inline) -->
+        <section id="detailPanel" class="hidden bg-white rounded-xl shadow-2xl border border-green-100 p-8 fixed inset-0 z-50 overflow-y-auto m-4 md:m-12 lg:mx-32">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <span id="detailScope" class="text-xs font-bold uppercase tracking-wide text-green-600 bg-green-100 px-2 py-1 rounded">Ámbito</span>
+                    <h2 id="detailTitle" class="text-3xl font-bold text-stone-800 mt-2">Título de la Ayuda</h2>
+                    <p id="detailOrg" class="text-lg text-stone-500">Organismo</p>
+                </div>
+                <button onclick="closeDetail()" class="text-stone-400 hover:text-red-500 transition text-2xl">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Left Col -->
+                <div class="space-y-6">
+                    <div class="bg-stone-50 p-4 rounded-lg">
+                        <h3 class="font-bold text-stone-700 mb-2"><i class="fa-solid fa-users mr-2"></i>Beneficiarios</h3>
+                        <p id="detailBeneficiaries" class="text-stone-600 text-sm leading-relaxed">...</p>
+                    </div>
+                    <div class="bg-stone-50 p-4 rounded-lg">
+                        <h3 class="font-bold text-stone-700 mb-2"><i class="fa-solid fa-money-bill-wave mr-2"></i>Importe Máximo</h3>
+                        <p id="detailAmount" class="text-2xl font-mono font-bold text-green-600">...</p>
+                    </div>
+                </div>
+                <!-- Right Col -->
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-bold text-stone-700 mb-2 border-b pb-1">Requisitos y Gastos Subvencionables</h3>
+                        <p id="detailReqs" class="text-stone-600 text-sm leading-relaxed whitespace-pre-line">...</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-stone-700 mb-2 border-b pb-1">Enlace de Verificación</h3>
+                        <a id="detailLink" href="#" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                            Acceder a la convocatoria oficial <i class="fa-solid fa-external-link-alt ml-2 text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 pt-6 border-t border-stone-100 text-right">
+                <button onclick="closeDetail()" class="px-6 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg transition font-medium">Cerrar</button>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-stone-900 text-stone-400 py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="mb-2">Análisis de Financiación para Eco-Wear Tech &copy; 2025</p>
+            <p class="text-xs text-stone-600">Basado en fuentes oficiales del CDTI, Red.es, ENISA, ICO y Seguridad Social.</p>
+        </div>
+    </footer>
+
+    <!-- Data & Logic -->
+    <script>
+        // --- DATA STORE ---
+        // Data derived directly from the Source Report
+        const fundingData = [
+            {
+                id: 1,
+                ambito: "Nacional / UE",
+                programa: "Programa NEOTEC",
+                organismo: "CDTI",
+                tipo: "Subvención", // a Fondo Perdido
+                beneficiarios: "Empresas de Base Tecnológica (EBTs) de máx. 3 años de antigüedad y capital social mínimo (ej. 20.000 €).",
+                requisitos: "Gastos: Personal, equipos, consultoría, materiales. \nRequisitos: Desarrollo de tecnología propia. \nPlazos: Anual (ej. mayo-junio 2025).",
+                importeMax: 250000,
+                importeDisplay: "250.000 €",
+                enlace: "https://www.cdti.es/ayudas/ayudas-neotec-2025",
+                icon: "fa-microchip",
+                color: "green"
+            },
+            {
+                id: 2,
+                ambito: "Nacional / UE",
+                programa: "Ayudas I+D en IA y Tecnologías",
+                organismo: "Red.es / Fondos Next Gen",
+                tipo: "Subvención", // a Fondo Perdido
+                beneficiarios: "Proyectos de I+D en Pymes con alto componente tecnológico (IA, materiales avanzados, etc.).",
+                requisitos: "Gastos: Proyectos de investigación industrial o desarrollo experimental. \nRequisitos: Presupuesto mínimo alto. \nPlazos: Variable según convocatoria.",
+                importeMax: 5000000,
+                importeDisplay: "5.000.000 €",
+                enlace: "https://sede.red.gob.es/es/procedimientos/convocatoria-de-ayudas-2025-destinadas-proyectos-de-investigacion-y-desarrollo-en",
+                icon: "fa-brain",
+                color: "blue"
+            },
+            {
+                id: 3,
+                ambito: "Nacional",
+                programa: "Línea Jóvenes Emprendedores",
+                organismo: "ENISA",
+                tipo: "Préstamo", // Participativo
+                beneficiarios: "Startups con menos de 24 meses de vida, lideradas por jóvenes (menores de 40 años) o por equipos con potencial.",
+                requisitos: "Gastos: Inversiones a largo plazo, capital circulante. \nRequisitos: Modelo de negocio innovador, viabilidad técnica y económica. \nPlazos: Continuo.",
+                importeMax: 75000,
+                importeDisplay: "75.000 €",
+                enlace: "https://www.enisa.es/es/financiacion/lineas/jovenes-emprendedores",
+                icon: "fa-rocket",
+                color: "purple"
+            },
+            {
+                id: 4,
+                ambito: "Nacional / UE",
+                programa: "Programa Kit Digital",
+                organismo: "Red.es / Acelera Pyme",
+                tipo: "Subvención", // Bono
+                beneficiarios: "Pymes y Autónomos, segmentados por número de empleados (0 a <50).",
+                requisitos: "Gastos: Soluciones digitalización (e-commerce, CRM, ciberseguridad). \nRequisitos: No haber recibido ayudas similares, obligaciones al día. \nPlazos: Convocatorias abiertas.",
+                importeMax: 12000,
+                importeDisplay: "12.000 €",
+                enlace: "https://www.acelerapyme.gob.es/kit-digital",
+                icon: "fa-laptop-code",
+                color: "teal"
+            },
+            {
+                id: 5,
+                ambito: "Nacional / Autonómico",
+                programa: "Tarifa Plana y Cuota Cero",
+                organismo: "Seguridad Social / CC.AA.",
+                tipo: "Bonificación",
+                beneficiarios: "Nuevos Trabajadores Autónomos (sin haber cotizado en RETA en los últimos 2-3 años).",
+                requisitos: "Gastos: Cuotas a la Seguridad Social (bonificación). \nRequisitos: Alta inicial en RETA. \nPlazos: 12 meses iniciales (ampliable).",
+                importeMax: 960, // Aprox yearly savings/subsidy value for sorting
+                importeDisplay: "Bonificación Cuota (80€/mes o 0€)",
+                enlace: "https://www.seg-social.es/wps/portal/wss/internet/Autonomos/Afiliacion/Bonificaciones/!ut/p/z1/04_Sj9CPykssy0xPLM5YPAPfR6SgyMT_ZzCDLdK7Uv-xMBzIDcQJAcQdDE2N_Q38g1Nzc_O83U1tDBEw52s3J39gQG4R2EGE_gB0uDkC5YgSgIDc0J9gUq0P-F0G0C4F6xRkF-eU5VagEAHJ2o2w!!/dz/d5/L2dBISEvZ0FBIS9nQSEh/",
+                icon: "fa-user-check",
+                color: "yellow"
+            },
+            {
+                id: 6,
+                ambito: "Nacional",
+                programa: "Líneas de Financiación Empresarial",
+                organismo: "ICO",
+                tipo: "Préstamo", // Bancario con Aval
+                beneficiarios: "Pymes y Autónomos para proyectos de inversión o necesidades de liquidez.",
+                requisitos: "Gastos: Inversión productiva, circulante. \nRequisitos: Intermediación a través de una entidad financiera. \nPlazos: Continuo.",
+                importeMax: 12500000,
+                importeDisplay: "12.500.000 €",
+                enlace: "https://www.ico.es/web/ico/lineas-de-financiacion",
+                icon: "fa-building-columns",
+                color: "stone"
+            },
+            {
+                id: 7,
+                ambito: "Autonómico / Local",
+                programa: "Ayudas al Inicio de Actividad",
+                organismo: "CC.AA. (Ej. Navarra/Andalucía)",
+                tipo: "Subvención",
+                beneficiarios: "Personas desempleadas que se den de alta como autónomos o constituyan una microempresa.",
+                requisitos: "Gastos: Constitución, licencias, primer alquiler, equipos. \nRequisitos: Estar desempleado, mantener alta. \nPlazos: Convocatorias anuales.",
+                importeMax: 10000,
+                importeDisplay: "Hasta 10.000 €",
+                enlace: "https://planderecuperacion.gob.es",
+                icon: "fa-map-location-dot",
+                color: "orange"
+            },
+            {
+                id: 8,
+                ambito: "Nacional",
+                programa: "Microcréditos PAEM",
+                organismo: "Cámaras de Comercio / ICO",
+                tipo: "Préstamo", // Microcrédito
+                beneficiarios: "Mujeres Emprendedoras que inician o consolidan un negocio.",
+                requisitos: "Gastos: Financiación de proyectos de autoempleo. \nRequisitos: Viabilidad del plan de negocio. \nPlazos: Continuo.",
+                importeMax: 25000,
+                importeDisplay: "25.000 €",
+                enlace: "https://www.camara.es/programa-de-apoyo-empresarial-a-las-mujeres-paem",
+                icon: "fa-venus",
+                color: "pink"
+            }
+        ];
+
+        // State for Calculator
+        let selectedIds = new Set();
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCharts();
+            renderCards('all');
+        });
+
+        // --- CHARTS LOGIC ---
+        function renderCharts() {
+            // Chart 1: Amounts (Logarithmic due to huge range)
+            const ctxAmt = document.getElementById('fundingAmountChart').getContext('2d');
+            new Chart(ctxAmt, {
+                type: 'bar',
+                data: {
+                    labels: fundingData.map(d => d.programa.substring(0, 15) + '...'),
+                    datasets: [{
+                        label: 'Importe Máximo (€)',
+                        data: fundingData.map(d => d.importeMax),
+                        backgroundColor: fundingData.map(d => d.tipo === 'Subvención' ? 'rgba(74, 222, 128, 0.6)' : 'rgba(96, 165, 250, 0.6)'),
+                        borderColor: fundingData.map(d => d.tipo === 'Subvención' ? 'rgba(74, 222, 128, 1)' : 'rgba(96, 165, 250, 1)'),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Euros (Escala Log)' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Types (Doughnut)
+            const typeCounts = fundingData.reduce((acc, curr) => {
+                acc[curr.tipo] = (acc[curr.tipo] || 0) + 1;
+                return acc;
+            }, {});
+
+            const ctxType = document.getElementById('fundingTypeChart').getContext('2d');
+            new Chart(ctxType, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeCounts),
+                    datasets: [{
+                        data: Object.values(typeCounts),
+                        backgroundColor: [
+                            '#4ade80', // Subvención (Green)
+                            '#60a5fa', // Préstamo (Blue)
+                            '#fbbf24'  // Bonificación (Yellow)
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // --- CARDS & FILTER LOGIC ---
+        function filterGrants(type) {
+            // UI Button State
+            const buttons = document.querySelectorAll('#filterContainer button');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-stone-800', 'text-white');
+                btn.classList.add('bg-white', 'text-stone-600');
+            });
+            const activeBtn = document.getElementById(`btn-${type}`);
+            activeBtn.classList.remove('bg-white', 'text-stone-600');
+            activeBtn.classList.add('bg-stone-800', 'text-white');
+
+            renderCards(type);
+        }
+
+        function renderCards(filterType) {
+            const container = document.getElementById('cardsGrid');
+            container.innerHTML = '';
+
+            const filtered = filterType === 'all' 
+                ? fundingData 
+                : fundingData.filter(item => item.tipo.includes(filterType));
+
+            filtered.forEach(item => {
+                const isSelected = selectedIds.has(item.id);
+                const borderClass = isSelected ? 'border-green-500 ring-2 ring-green-200' : 'border-stone-200';
+                
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-xl shadow-sm border ${borderClass} p-6 flex flex-col justify-between card-hover relative`;
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-${item.color}-50 rounded-lg text-${item.color}-600">
+                                <i class="fa-solid ${item.icon} text-xl"></i>
+                            </div>
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-stone-100 text-stone-600">${item.tipo}</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-stone-800 leading-tight mb-2">${item.programa}</h3>
+                        <p class="text-sm text-stone-500 mb-4">${item.organismo}</p>
+                        <div class="mb-4">
+                            <p class="text-xs text-stone-400 uppercase tracking-wide">Importe Máx.</p>
+                            <p class="text-xl font-bold text-stone-700">${item.importeDisplay}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2 mt-4">
+                        <button onclick="openDetail(${item.id})" class="flex-1 py-2 px-4 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-sm font-medium transition">
+                            Detalles
+                        </button>
+                        <button onclick="toggleSelect(${item.id})" class="py-2 px-3 rounded-lg text-sm transition ${isSelected ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-white border border-stone-300 text-stone-400 hover:text-green-500 hover:border-green-500'}">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- CALCULATOR LOGIC ---
+        function toggleSelect(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            updateTotal();
+            // Re-render to update border styles, keeping current filter would be ideal but 'all' works for demo simplicity
+            // To improve UX, we find the current active filter button
+            const activeBtn = document.querySelector('#filterContainer button.bg-stone-800').id.replace('btn-', '');
+            renderCards(activeBtn); 
+        }
+
+        function updateTotal() {
+            let total = 0;
+            selectedIds.forEach(id => {
+                const item = fundingData.find(d => d.id === id);
+                if (item) total += item.importeMax;
+            });
+            document.getElementById('totalCalculator').innerText = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total);
+        }
+
+        // --- DETAIL MODAL LOGIC ---
+        function openDetail(id) {
+            const item = fundingData.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('detailTitle').innerText = item.programa;
+            document.getElementById('detailOrg').innerText = item.organismo;
+            document.getElementById('detailScope').innerText = item.ambito;
+            document.getElementById('detailBeneficiaries').innerText = item.beneficiarios;
+            document.getElementById('detailAmount').innerText = item.importeDisplay;
+            document.getElementById('detailReqs').innerText = item.requisitos;
+            document.getElementById('detailLink').href = item.enlace;
+
+            const modal = document.getElementById('detailPanel');
+            modal.classList.remove('hidden');
+            // Animation for entry
+            modal.classList.add('animate-fade-in-up');
+        }
+
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.add('hidden');
+        }
+
+        // Close modal on click outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailPanel');
+            if (event.target == modal) {
+                closeDetail();
+            }
+        }
+    </script>
+</body>
+</html>
